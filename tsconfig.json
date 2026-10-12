@@ -20,11 +20,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@lib/*": ["lib/*"],
-      "@types/*": ["types/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],
