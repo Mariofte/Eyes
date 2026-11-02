@@ -1,4 +1,5 @@
-import { HttpError, NetworkError, ValidationError } from "@/utils/errors";
+import { error, debug, warn } from "@tauri-apps/plugin-log";
+import { HttpError, NetworkError, ValidationError } from "../utils/errors/errors_api";
 import { fetch } from "@tauri-apps/plugin-http";
 import { z } from "zod";
 
@@ -14,16 +15,21 @@ async function http<T extends z.ZodType>(
     schema: T,
     options?: RequestInit,
 ): Promise<z.infer<T>> {
+    const method = options?.method ?? "GET";
     let response: Response;
-    try {
-        response = await fetch(url, options);
-    } catch(error) {
-        throw new NetworkError(
-            error instanceof Error ? error.message : "Network error occurred"
-        );
-    }
+    response = await fetch(url, options)
+        .then(async (res) => {
+            await debug(`${method} ${url} - respuesta ${res.status}`);
+            return res;
+        })
+        .catch(async (err) => {
+            const message = err instanceof Error ? err.message : "Network error occurred";
+            await error(`${method} ${url} - error de red: ${message}`);
+            throw new NetworkError(message);
+        });
 
     if (!response.ok) {
+        warn(`${method} ${url} - error HTTP: ${response.status}`);
         throw new HttpError(response.status, `HTTP ${response.status}`);
     }
 
@@ -32,6 +38,7 @@ async function http<T extends z.ZodType>(
         return schema.parse(data);
     } catch (e) {
         if (e instanceof z.ZodError) {
+            error(`${method} ${url} - error de validación: ${JSON.stringify(e.issues)}`);
             throw new ValidationError(e.issues);
         }
         throw e;
@@ -39,9 +46,9 @@ async function http<T extends z.ZodType>(
 }
 
 const Request = {
-    get: async <T extends z.ZodType>(url: string, schema: T, options?: RequestInit): Promise<z.infer<T>> => 
-        http(url, schema, { ...options, method: "GET" })
-,
+    get: async <T extends z.ZodType>(url: string, schema: T, options?: RequestInit): Promise<z.infer<T>> =>
+        http(url, schema, { ...options, method: "GET" }),
+
     post: async <T extends z.ZodType>(url: string, schema: T, body: unknown, options?: RequestInit): Promise<z.infer<T>> =>
         http(url, schema, { ...options, method: "POST", body: JSON.stringify(body) }),
 
@@ -53,3 +60,4 @@ const Request = {
 };
 
 export default Request;
+

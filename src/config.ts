@@ -1,3 +1,5 @@
-export default config = {
-    baseUrl: process.env.TAURI_URL || "http://localhost:8000",
-};
+const config = {
+  baseAPI: "http://127.0.0.1:8000",
+} as const;
+
+export default config;
